@@ -1,0 +1,35 @@
+{
+  "name": "Safety Guardian",
+  "short_name": "Guardian",
+  "description": "AI-powered product safety identifier for visually impaired and low-vision users.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#071527",
+  "theme_color": "#071527",
+  "categories": ["health", "utilities", "accessibility"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "maskable-icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Scan Product",
+      "short_name": "Scan",
+      "description": "Open the Safety Guardian scanner.",
+      "url": "./",
+      "icons": [{ "src": "icon.svg", "sizes": "512x512" }]
+    }
+  ]
+}
