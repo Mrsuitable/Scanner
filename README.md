@@ -2,7 +2,9 @@
 
 Safety Guardian is an AI-powered product safety identifier for visually impaired or low-vision users. It is designed as a zero-search safety assistant: open the app, point at a product or upload a photo, and hear the safest available warning first.
 
-Live app: https://mrsuitable.github.io/Scanner/
+Static demo: https://mrsuitable.github.io/Scanner/
+
+For real Vision AI detection, deploy this repository to a host that supports serverless functions, such as Vercel. GitHub Pages is static and cannot safely store `OPENAI_API_KEY`.
 
 ## Features
 
@@ -46,16 +48,22 @@ npm run preview
 
 ## Vision API Integration
 
-Do not put API keys in the frontend. Create a server endpoint such as:
+Do not put API keys in the frontend. This repo includes a serverless endpoint:
 
 ```text
 POST /api/analyze-product
 ```
 
-Then configure:
+Set these environment variables on the hosting platform:
 
 ```bash
+OPENAI_API_KEY=sk-your-server-side-key
+OPENAI_VISION_MODEL=gpt-4.1-mini
 VITE_ANALYSIS_ENDPOINT=/api/analyze-product
 ```
 
-See `server/visionApiPlaceholder.js` for pseudocode.
+On Vercel, `VITE_ANALYSIS_ENDPOINT` can be omitted because the app defaults to `/api/analyze-product`.
+
+The endpoint returns a structured safety result and still fails safely as `Unknown` if confidence is low or the model cannot identify the product.
+
+See `api/analyze-product.js` for the working serverless implementation and `server/visionApiPlaceholder.js` for integration notes.

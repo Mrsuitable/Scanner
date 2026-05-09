@@ -2,7 +2,7 @@ import { demoProductMap, mockProducts } from "../data/mockProducts";
 
 const LOW_CONFIDENCE_THRESHOLD = 0.58;
 const MOCK_ANALYSIS_DELAY = 850;
-const ANALYSIS_ENDPOINT = import.meta.env.VITE_ANALYSIS_ENDPOINT || "";
+const ANALYSIS_ENDPOINT = import.meta.env.VITE_ANALYSIS_ENDPOINT || "/api/analyze-product";
 
 function confidenceLabel(score) {
   if (score >= 0.84) return "high";
@@ -100,8 +100,13 @@ async function analyzeWithBackend(imageData) {
     }),
   });
 
+  if (response.status === 404) {
+    return null;
+  }
+
   if (!response.ok) {
-    throw new Error("Product analysis endpoint failed.");
+    const payload = await response.json().catch(() => null);
+    return payload?.result || null;
   }
 
   return response.json();
@@ -138,7 +143,7 @@ export async function analyzeProductImage(imageData) {
 
   await new Promise((resolve) => setTimeout(resolve, MOCK_ANALYSIS_DELAY));
 
-  const backendResult = await analyzeWithBackend(imageData);
+  const backendResult = await analyzeWithBackend(imageData).catch(() => null);
 
   if (backendResult) {
     return enforceSafetyRules({

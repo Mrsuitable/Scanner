@@ -2,6 +2,10 @@
 
 The frontend intentionally does not contain API keys or direct Vision Language Model calls.
 
+This repo now includes a working Vercel-style serverless endpoint at:
+
+`api/analyze-product.js`
+
 In production, create a backend endpoint such as:
 
 `POST /api/analyze-product`
@@ -9,6 +13,10 @@ In production, create a backend endpoint such as:
 Then point the frontend to it with:
 
 `VITE_ANALYSIS_ENDPOINT=/api/analyze-product`
+
+Set the server-side key only on your hosting platform:
+
+`OPENAI_API_KEY=sk-your-server-side-key`
 
 Responsibilities:
 

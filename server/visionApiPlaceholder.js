@@ -4,6 +4,9 @@
   This file is intentionally not imported by the Vite frontend. It shows where
   the server-side VLM call should happen so no API key is exposed to users.
 
+  A working Vercel-style implementation is available at:
+  api/analyze-product.js
+
   app.post("/api/analyze-product", async (req, res) => {
     const { imageData } = req.body;
 
