@@ -1,5 +1,12 @@
 const CACHE_NAME = "safety-guardian-v2";
-const APP_SHELL = ["/", "/manifest.webmanifest", "/icon.svg", "/maskable-icon.svg"];
+const APP_SCOPE = new URL(self.registration.scope);
+const APP_BASE_PATH = APP_SCOPE.pathname;
+const APP_SHELL = [
+  APP_BASE_PATH,
+  `${APP_BASE_PATH}manifest.webmanifest`,
+  `${APP_BASE_PATH}icon.svg`,
+  `${APP_BASE_PATH}maskable-icon.svg`,
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -31,10 +38,10 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/", clone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(APP_BASE_PATH, clone));
           return response;
         })
-        .catch(() => caches.match("/"))
+        .catch(() => caches.match(APP_BASE_PATH))
     );
     return;
   }

@@ -2,6 +2,8 @@
 
 Safety Guardian is an AI-powered product safety identifier for visually impaired or low-vision users. It is designed as a zero-search safety assistant: open the app, point at a product or upload a photo, and hear the safest available warning first.
 
+Live app: https://mrsuitable.github.io/Scanner/
+
 ## Features
 
 - React + Vite frontend
