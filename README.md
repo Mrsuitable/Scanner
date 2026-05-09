@@ -66,4 +66,12 @@ On Vercel, `VITE_ANALYSIS_ENDPOINT` can be omitted because the app defaults to `
 
 The endpoint returns a structured safety result and still fails safely as `Unknown` if confidence is low or the model cannot identify the product.
 
+After deployment, check:
+
+```text
+https://YOUR-VERCEL-APP.vercel.app/api/health
+```
+
+It should return `"visionConfigured": true`.
+
 See `api/analyze-product.js` for the working serverless implementation and `server/visionApiPlaceholder.js` for integration notes.
