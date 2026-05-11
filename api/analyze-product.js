@@ -1,5 +1,7 @@
-const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const DEFAULT_MODEL = "gpt-4.1-mini";
+const OPENAI_BASE_URL = "https://api.openai.com/v1";
+const AICREDITS_BASE_URL = "https://api.aicredits.in/v1";
+const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
+const DEFAULT_AICREDITS_MODEL = "openai/gpt-4o-mini";
 const MAX_IMAGE_DATA_URL_LENGTH = 8_000_000;
 
 const safetySchema = {
@@ -69,6 +71,29 @@ async function parseJsonBody(request) {
   return rawBody ? JSON.parse(rawBody) : {};
 }
 
+function normalizeBaseUrl(value) {
+  return String(value || "").replace(/\/+$/, "");
+}
+
+function getApiConfig() {
+  const apiKey = process.env.AI_API_KEY || process.env.AICREDITS_API_KEY || process.env.OPENAI_API_KEY;
+  const keyLooksLikeAicredits = Boolean(apiKey?.startsWith("sk-live-") || process.env.AICREDITS_API_KEY);
+  const explicitBaseUrl = process.env.AI_API_BASE_URL || process.env.AICREDITS_BASE_URL || process.env.OPENAI_BASE_URL;
+  const baseUrl = normalizeBaseUrl(explicitBaseUrl || (keyLooksLikeAicredits ? AICREDITS_BASE_URL : OPENAI_BASE_URL));
+  const usesAicredits = baseUrl.includes("aicredits.in");
+
+  return {
+    apiKey,
+    baseUrl,
+    model:
+      process.env.AI_VISION_MODEL ||
+      process.env.AICREDITS_VISION_MODEL ||
+      process.env.OPENAI_VISION_MODEL ||
+      (usesAicredits ? DEFAULT_AICREDITS_MODEL : DEFAULT_OPENAI_MODEL),
+    provider: usesAicredits ? "AICredits" : "OpenAI-compatible",
+  };
+}
+
 function fallbackUnknown(overrides = {}) {
   return {
     productName: "Unknown Product",
@@ -94,14 +119,20 @@ function enforceServerSafety(result) {
     return fallbackUnknown();
   }
 
+  const fallback = fallbackUnknown();
   const confidenceScore = Number(result.confidenceScore);
+  const secondaryWarnings = Array.isArray(result.secondaryWarnings)
+    ? result.secondaryWarnings.filter(Boolean).slice(0, 5)
+    : [];
+
   const normalized = {
-    ...fallbackUnknown(),
+    ...fallback,
     ...result,
+    dangerLevel: ["Safe", "Caution", "Danger", "Unknown"].includes(result.dangerLevel)
+      ? result.dangerLevel
+      : "Unknown",
     confidenceScore: Number.isFinite(confidenceScore) ? Math.max(0, Math.min(1, confidenceScore)) : 0.2,
-    secondaryWarnings: Array.isArray(result.secondaryWarnings)
-      ? result.secondaryWarnings.filter(Boolean).slice(0, 5)
-      : fallbackUnknown().secondaryWarnings,
+    secondaryWarnings: secondaryWarnings.length ? secondaryWarnings : fallback.secondaryWarnings,
   };
 
   if (normalized.confidenceScore < 0.58 && normalized.dangerLevel === "Safe") {
@@ -124,14 +155,53 @@ function enforceServerSafety(result) {
   return normalized;
 }
 
-function extractOutputText(openaiResponse) {
-  if (typeof openaiResponse?.output_text === "string") {
-    return openaiResponse.output_text;
+function extractChatCompletionText(apiResponse) {
+  const content = apiResponse?.choices?.[0]?.message?.content;
+
+  if (typeof content === "string") {
+    return content;
   }
 
-  const message = openaiResponse?.output?.find((item) => item.type === "message");
-  const textPart = message?.content?.find((part) => part.type === "output_text" || part.type === "text");
-  return textPart?.text || "";
+  if (Array.isArray(content)) {
+    const textPart = content.find((part) => part.type === "text" && typeof part.text === "string");
+    return textPart?.text || "";
+  }
+
+  return "";
+}
+
+function parseJsonObject(text) {
+  const trimmed = String(text || "")
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+      return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+    }
+
+    throw new Error("The model did not return valid JSON.");
+  }
+}
+
+function buildPrompt() {
+  return [
+    "Analyze this household product image for safety.",
+    "Identify whether it may be food, medicine, cleaning chemical, cosmetic, pesticide, or unknown.",
+    "Read visible label text, warning symbols, color, brand clues, and product shape.",
+    "Prioritize ingestion, eye/skin contact, inhalation, fire, and child-safety risks.",
+    "Never classify an uncertain item as Safe. If unsure, use Unknown or Caution and warn the user not to consume it.",
+    "Return JSON only, with these exact keys: productName, productCategory, dangerLevel, confidenceScore, primaryWarning, secondaryWarnings, whatToDoNext, shortVoiceMessage, detectedText, possibleConfusionRisk.",
+    `The JSON must match this schema: ${JSON.stringify(safetySchema)}.`,
+  ].join(" ");
 }
 
 export default async function handler(request, response) {
@@ -141,10 +211,12 @@ export default async function handler(request, response) {
     return;
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  const apiConfig = getApiConfig();
+
+  if (!apiConfig.apiKey) {
     sendJson(response, 500, {
-      error: "Vision AI is not configured. Set OPENAI_API_KEY on the server.",
-      result: fallbackUnknown({ detectedText: "OPENAI_API_KEY is missing on the server." }),
+      error: "Vision AI is not configured. Set AI_API_KEY, AICREDITS_API_KEY, or OPENAI_API_KEY on the server.",
+      result: fallbackUnknown({ detectedText: "No server-side Vision AI API key is configured." }),
     });
     return;
   }
@@ -168,41 +240,37 @@ export default async function handler(request, response) {
       return;
     }
 
-    const apiResponse = await fetch(OPENAI_RESPONSES_URL, {
+    const apiResponse = await fetch(`${apiConfig.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiConfig.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_VISION_MODEL || DEFAULT_MODEL,
-        instructions:
-          "You are Safety Guardian, a safety-first household product identification assistant for visually impaired and low-vision users. Prioritize danger warnings over brand details. Never classify an uncertain item as safe.",
-        input: [
+        model: apiConfig.model,
+        temperature: 0,
+        max_tokens: 900,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are Safety Guardian, a safety-first household product identification assistant for visually impaired and low-vision users. Prioritize danger warnings over brand details. Return only valid JSON.",
+          },
           {
             role: "user",
             content: [
+              { type: "text", text: buildPrompt() },
               {
-                type: "input_text",
-                text:
-                  "Analyze this household product image for safety. Identify whether it may be food, medicine, cleaning chemical, cosmetic, pesticide, or unknown. Read visible label text and warning symbols. Prioritize ingestion, contact, and breathing risks. Return structured JSON only. If unsure, warn the user not to consume it.",
-              },
-              {
-                type: "input_image",
-                image_url: imageData,
-                detail: "high",
+                type: "image_url",
+                image_url: {
+                  url: imageData,
+                  detail: "high",
+                },
               },
             ],
           },
         ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "product_safety_result",
-            strict: true,
-            schema: safetySchema,
-          },
-        },
       }),
     });
 
@@ -210,14 +278,14 @@ export default async function handler(request, response) {
 
     if (!apiResponse.ok) {
       sendJson(response, apiResponse.status, {
-        error: payload?.error?.message || "Vision AI request failed.",
+        error: payload?.error?.message || `${apiConfig.provider} Vision AI request failed.`,
         result: fallbackUnknown({ detectedText: "Vision AI request failed before a reliable result was returned." }),
       });
       return;
     }
 
-    const outputText = extractOutputText(payload);
-    const parsedResult = JSON.parse(outputText);
+    const outputText = extractChatCompletionText(payload);
+    const parsedResult = parseJsonObject(outputText);
 
     sendJson(response, 200, enforceServerSafety(parsedResult));
   } catch (error) {

@@ -4,7 +4,7 @@ Safety Guardian is an AI-powered product safety identifier for visually impaired
 
 Static demo: https://mrsuitable.github.io/Scanner/
 
-For real Vision AI detection, deploy this repository to a host that supports serverless functions, such as Vercel. GitHub Pages is static and cannot safely store `OPENAI_API_KEY`.
+For real Vision AI detection, deploy this repository to a host that supports serverless functions, such as Vercel. GitHub Pages is static and cannot safely store API keys.
 
 ## Features
 
@@ -57,14 +57,22 @@ POST /api/analyze-product
 Set these environment variables on the hosting platform:
 
 ```bash
-OPENAI_API_KEY=sk-your-server-side-key
-OPENAI_VISION_MODEL=gpt-4.1-mini
+AICREDITS_API_KEY=sk-live-your-server-side-aicredits-key
+AICREDITS_BASE_URL=https://api.aicredits.in/v1
+AICREDITS_VISION_MODEL=openai/gpt-4o-mini
 VITE_ANALYSIS_ENDPOINT=/api/analyze-product
 ```
 
 On Vercel, `VITE_ANALYSIS_ENDPOINT` can be omitted because the app defaults to `/api/analyze-product`.
 
-The endpoint returns a structured safety result and still fails safely as `Unknown` if confidence is low or the model cannot identify the product.
+The endpoint calls an OpenAI-compatible `/chat/completions` vision model, so it works with AICredits or direct OpenAI. For direct OpenAI billing, use these instead:
+
+```bash
+OPENAI_API_KEY=sk-your-server-side-openai-key
+OPENAI_VISION_MODEL=gpt-4.1-mini
+```
+
+The endpoint returns a structured safety result and still fails safely as `Unknown` if confidence is low or the model cannot identify the product. Never commit real API keys to GitHub; add them only in Vercel Environment Variables.
 
 After deployment, check:
 

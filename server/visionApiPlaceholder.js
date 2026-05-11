@@ -21,19 +21,21 @@
       If unsure, warn the user not to consume it.
     `;
 
-    const vlmResult = await visionClient.responses.create({
-      model: process.env.VISION_MODEL,
-      input: [
-        { role: "system", content: "You are a safety-first product identification assistant." },
+    const vlmResult = await visionClient.chat.completions.create({
+      // AICredits uses an OpenAI-compatible base URL:
+      // https://api.aicredits.in/v1
+      model: process.env.AI_VISION_MODEL || process.env.AICREDITS_VISION_MODEL || process.env.OPENAI_VISION_MODEL,
+      messages: [
+        { role: "system", content: "You are a safety-first product identification assistant. Return JSON only." },
         {
           role: "user",
           content: [
-            { type: "input_text", text: prompt },
-            { type: "input_image", image_url: imageData }
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageData, detail: "high" } }
           ]
         }
       ],
-      response_format: { type: "json_schema", json_schema: safetySchema }
+      response_format: { type: "json_object" }
     });
 
     const result = validateSafetySchema(vlmResult);
