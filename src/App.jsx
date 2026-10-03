@@ -183,7 +183,7 @@ function App() {
               <ShieldAlert aria-hidden="true" size={30} strokeWidth={2.6} />
             </div>
             <div>
-              <p className="text-2xl font-black tracking-normal">Safety Guardian</p>
+              <p className="text-2xl font-black tracking-normal">VERIFOOD</p>
               <p className="text-sm font-semibold text-slate-300">Zero-search product safety assistant</p>
             </div>
           </div>

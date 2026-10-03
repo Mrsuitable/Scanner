@@ -1,4 +1,4 @@
-# Safety Guardian Backend Placeholder
+# VERIFOOD Backend Placeholder
 
 The frontend intentionally does not contain API keys or direct Vision Language Model calls.
 

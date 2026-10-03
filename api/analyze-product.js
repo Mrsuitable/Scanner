@@ -255,7 +255,7 @@ export default async function handler(request, response) {
           {
             role: "system",
             content:
-              "You are Safety Guardian, a safety-first household product identification assistant for visually impaired and low-vision users. Prioritize danger warnings over brand details. Return only valid JSON.",
+              "You are VERIFOOD, a safety-first household product identification assistant for visually impaired and low-vision users. Prioritize danger warnings over brand details. Return only valid JSON.",
           },
           {
             role: "user",

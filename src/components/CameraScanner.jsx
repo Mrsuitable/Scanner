@@ -207,7 +207,7 @@ export default function CameraScanner({
       <div className="relative z-10 flex min-h-[calc(100svh-92px)] flex-col justify-between p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3">
           <div className="rounded-2xl border border-white/15 bg-slate-950/75 px-4 py-3 backdrop-blur">
-            <p className="text-sm font-bold uppercase tracking-[0.18em] text-guardian-yellow">Safety Guardian</p>
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-guardian-yellow">VERIFOOD</p>
             <p className="mt-1 text-lg font-black text-white" aria-live="polite">
               {statusMessage}
             </p>
